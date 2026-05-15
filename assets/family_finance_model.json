@@ -1,0 +1,37 @@
+{
+  "model_type": "LinearRegression",
+  "target": "financial_health_score",
+  "description": "A single integrated linear regression model for family financial health scoring.",
+  "score_design": {
+    "cashflow_score_weight": 0.4,
+    "education_score_weight": 0.3,
+    "protection_score_weight": 0.3
+  },
+  "feature_names": [
+    "child_age",
+    "monthly_income",
+    "monthly_expense",
+    "education_expense",
+    "saving_rate",
+    "education_rate",
+    "has_emergency_fund",
+    "has_education_fund",
+    "has_basic_insurance"
+  ],
+  "model": {
+    "intercept": 47.37041335787197,
+    "coefficients": {
+      "child_age": -0.1676904447376516,
+      "monthly_income": -4.329906206851494e-06,
+      "monthly_expense": 1.853590060145414e-05,
+      "education_expense": -5.8022364678150546e-05,
+      "saving_rate": 44.34139910254794,
+      "education_rate": -17.9913507761954,
+      "has_emergency_fund": 12.517903896320606,
+      "has_education_fund": 8.352372723323425,
+      "has_basic_insurance": 9.90960450278199
+    },
+    "mae": 2.261857923219379,
+    "r2": 0.9448260000111022
+  }
+}
