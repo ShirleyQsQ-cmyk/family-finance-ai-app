@@ -26,6 +26,7 @@ flutter:
   assets:
     - assets/family_finance_model.json
     - assets/icon/app_icon.png
+    - assets/images/
 
 flutter_launcher_icons:
   android: true

@@ -1,24 +1,23 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // China Merchants Bank inspired palette:
-  // deep blue as primary, red as accent, white cards, light blue background.
-  static const primary = Color(0xFF004B8D);
-  static const primaryLight = Color(0xFF2F7BC6);
-  static const accentRed = Color(0xFFD71920);
+  static const primary = Color(0xFFDA2D2D);
+  static const primaryDark = Color(0xFFC92222);
+  static const primaryLight = Color(0xFFFFEFEF);
 
-  static const lightBackground = Color(0xFFF5F8FF);
-  static const lightBorder = Color(0xFFDCE8F7);
+  static const background = Color(0xFFFCF7F7);
+  static const card = Colors.white;
+  static const border = Color(0xFFF1DEDE);
 
-  static const darkText = Color(0xFF1F1F2E);
-  static const greyText = Color(0xFF77778A);
+  static const title = Color(0xFF2B1F1F);
+  static const text = Color(0xFF5F4B4B);
+  static const muted = Color(0xFF9A8686);
+  static const hint = Color(0xFFB19B9B);
 
-  static const green = Color(0xFF21A67A);
-  static const orange = Color(0xFFFF8A65);
-  static const yellow = Color(0xFFF5A623);
+  static const gold = Color(0xFFF4C04D);
+  static const blue = Color(0xFF5A89D8);
+  static const green = Color(0xFF59A56A);
   static const danger = Color(0xFFE85D75);
-
-  static const white = Colors.white;
 }
 
 class AppCard extends StatelessWidget {
@@ -27,7 +26,6 @@ class AppCard extends StatelessWidget {
   final EdgeInsetsGeometry? margin;
   final Color color;
   final double radius;
-  final Color? shadowColor;
   final Border? border;
 
   const AppCard({
@@ -35,9 +33,8 @@ class AppCard extends StatelessWidget {
     required this.child,
     this.padding = const EdgeInsets.all(20),
     this.margin,
-    this.color = AppColors.white,
-    this.radius = 26,
-    this.shadowColor,
+    this.color = AppColors.card,
+    this.radius = 28,
     this.border,
   });
 
@@ -49,13 +46,10 @@ class AppCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(radius),
-        border: border ??
-            Border.all(
-              color: AppColors.lightBorder,
-            ),
+        border: border ?? Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-            color: (shadowColor ?? AppColors.primary).withOpacity(0.07),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 18,
             offset: const Offset(0, 8),
           ),
@@ -69,40 +63,50 @@ class AppCard extends StatelessWidget {
 class AppSectionTitle extends StatelessWidget {
   final String title;
   final String subtitle;
+  final IconData? icon;
 
   const AppSectionTitle({
     super.key,
     required this.title,
     required this.subtitle,
+    this.icon,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 2),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w900,
-              color: AppColors.darkText,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              fontSize: 13,
-              height: 1.45,
-              color: AppColors.greyText,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (icon != null) ...[
+          Icon(icon, color: AppColors.primary, size: 22),
+          const SizedBox(width: 8),
         ],
-      ),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: AppColors.title,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  color: AppColors.muted,
+                  fontSize: 13.5,
+                  height: 1.45,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -121,43 +125,27 @@ class AppPrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final child = icon == null
-        ? Text(
-            text,
-            style: const TextStyle(
-              fontWeight: FontWeight.w900,
-              fontSize: 17,
-            ),
-          )
-        : Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon),
-              const SizedBox(width: 8),
-              Text(
-                text,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 17,
-                ),
-              ),
-            ],
-          );
-
     return SizedBox(
+      height: 56,
       width: double.infinity,
-      height: 58,
-      child: FilledButton(
+      child: FilledButton.icon(
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.primary,
-          foregroundColor: AppColors.white,
+          foregroundColor: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(19),
+            borderRadius: BorderRadius.circular(18),
           ),
         ),
         onPressed: onPressed,
-        child: child,
+        icon: icon == null ? const SizedBox.shrink() : Icon(icon),
+        label: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 16.5,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
       ),
     );
   }
@@ -177,92 +165,107 @@ class AppSecondaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final child = icon == null
-        ? Text(
-            text,
-            style: const TextStyle(
-              fontWeight: FontWeight.w900,
-              fontSize: 16,
-            ),
-          )
-        : Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                text,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 16,
-                ),
-              ),
-            ],
-          );
-
     return SizedBox(
-      width: double.infinity,
       height: 54,
-      child: OutlinedButton(
+      width: double.infinity,
+      child: OutlinedButton.icon(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.primary,
-          side: const BorderSide(
-            color: AppColors.lightBorder,
-            width: 1.2,
-          ),
-          backgroundColor: AppColors.white,
+          side: const BorderSide(color: AppColors.primary, width: 1.2),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
           ),
+          backgroundColor: Colors.white,
         ),
         onPressed: onPressed,
-        child: child,
+        icon: icon == null ? const SizedBox.shrink() : Icon(icon),
+        label: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
       ),
     );
   }
 }
 
-class AppNoteCard extends StatelessWidget {
+class AppPill extends StatelessWidget {
   final String text;
-  final IconData icon;
+  final IconData? icon;
   final Color color;
+  final Color background;
 
-  const AppNoteCard({
+  const AppPill({
     super.key,
     required this.text,
-    this.icon = Icons.info_rounded,
+    this.icon,
     this.color = AppColors.primary,
+    this.background = AppColors.primaryLight,
   });
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      color: color.withOpacity(0.08),
-      shadowColor: color,
-      border: Border.all(
-        color: color.withOpacity(0.20),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(
+          color: color.withValues(alpha: 0.18),
+        ),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            color: color,
-            size: 24,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(
-                color: color.withOpacity(0.90),
-                height: 1.55,
-                fontSize: 13.5,
-                fontWeight: FontWeight.w700,
-              ),
+          if (icon != null) ...[
+            Icon(icon, size: 15, color: color),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            text,
+            style: TextStyle(
+              color: color,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w900,
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class AppIconBox extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final Color background;
+  final double size;
+  final double iconSize;
+
+  const AppIconBox({
+    super.key,
+    required this.icon,
+    this.color = AppColors.primary,
+    this.background = AppColors.primaryLight,
+    this.size = 48,
+    this.iconSize = 24,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Icon(
+        icon,
+        color: color,
+        size: iconSize,
       ),
     );
   }
@@ -272,17 +275,12 @@ class AppGradientCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
   final double radius;
-  final List<Color> colors;
 
   const AppGradientCard({
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(22),
     this.radius = 30,
-    this.colors = const [
-      AppColors.primary,
-      AppColors.primaryLight,
-    ],
   });
 
   @override
@@ -291,17 +289,20 @@ class AppGradientCard extends StatelessWidget {
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: colors,
+        gradient: const LinearGradient(
+          colors: [
+            AppColors.primary,
+            AppColors.primaryDark,
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(radius),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.18),
-            blurRadius: 22,
-            offset: const Offset(0, 10),
+            color: AppColors.primary.withValues(alpha: 0.20),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
           ),
         ],
       ),

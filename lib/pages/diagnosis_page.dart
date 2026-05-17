@@ -1,9 +1,13 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../models/diagnosis_result.dart';
 import '../models/education_plan.dart';
 import '../models/family_info.dart';
 import '../services/finance_task_service.dart';
+import '../widgets/app_bottom_step_bar.dart';
+import '../widgets/app_ui.dart';
 import 'planning_report_page.dart';
 
 class DiagnosisPage extends StatelessWidget {
@@ -20,42 +24,17 @@ class DiagnosisPage extends StatelessWidget {
     required this.financeTaskService,
   });
 
-  Color get scoreColor {
-    if (diagnosis.financialHealthScore >= 80) {
-      return const Color(0xFF21A67A);
-    } else if (diagnosis.financialHealthScore >= 60) {
-      return const Color(0xFFF5A623);
-    } else {
-      return const Color(0xFFE85D75);
-    }
-  }
-
   String get scoreText {
-    if (diagnosis.financialHealthScore >= 80) {
-      return '整体较健康';
-    } else if (diagnosis.financialHealthScore >= 60) {
-      return '需要优化';
-    } else {
-      return '压力较高';
-    }
-  }
-
-  String get scoreDescription {
-    if (diagnosis.financialHealthScore >= 80) {
-      return '家庭财务结构较稳定，可继续保持储蓄节奏并定期复盘教育投入。';
-    } else if (diagnosis.financialHealthScore >= 60) {
-      return '家庭具备一定基础，但应优先关注应急金、教育储备和保障缺口。';
-    } else {
-      return '当前家庭财务压力较明显，建议先稳定现金流，再逐步配置教育和保障。';
-    }
+    if (diagnosis.financialHealthScore >= 80) return '状态良好';
+    if (diagnosis.financialHealthScore >= 60) return '需要优化';
+    return '压力较高';
   }
 
   List<String> get riskTags {
     final tags = <String>[];
 
-    if (info.savingRate < 0.1) tags.add('现金流偏紧');
+    if (info.savingRate < 0.1) tags.add('应急金不足');
     if (info.educationRate > 0.3) tags.add('教育支出偏高');
-    if (!info.hasEmergencyFund) tags.add('应急金不足');
     if (!info.hasEducationFund) tags.add('教育金缺口');
     if (!info.hasBasicInsurance) tags.add('保障缺口');
 
@@ -66,158 +45,115 @@ class DiagnosisPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final progressValue = diagnosis.financialHealthScore / 100;
+    final int score = diagnosis.financialHealthScore.clamp(0, 100);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F8FF),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF5F8FF),
-        title: const Text(
-          '家庭财务健康诊断',
-          style: TextStyle(fontWeight: FontWeight.w900),
-        ),
+        backgroundColor: AppColors.background,
+        elevation: 0,
         centerTitle: true,
+        title: const Text(
+          '财务健康诊断',
+          style: TextStyle(
+            color: AppColors.title,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
       ),
+      bottomNavigationBar: const AppBottomStepBar(currentStep: 2),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+        padding: const EdgeInsets.fromLTRB(22, 8, 22, 28),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _ScoreHeroCard(
-              score: diagnosis.financialHealthScore,
-              progressValue: progressValue,
-              scoreColor: scoreColor,
-              scoreText: scoreText,
-              description: scoreDescription,
+            _AnimatedIn(
+              delay: 0,
+              child: _Greeting(info: info),
+            ),
+            const SizedBox(height: 18),
+
+            _AnimatedIn(
+              delay: 80,
+              child: _ScoreCard(
+                score: score,
+                scoreText: scoreText,
+              ),
             ),
 
             const SizedBox(height: 18),
 
-            _ModelExplainCard(
-              savingRate: info.savingRate,
-              educationRate: info.educationRate,
+            _AnimatedIn(
+              delay: 160,
+              child: _FinancePieCard(info: info),
             ),
 
-            const SizedBox(height: 18),
+            const SizedBox(height: 20),
 
-            const _SectionTitle(
-              title: '家庭财务画像',
-              subtitle: '根据输入信息生成四个核心状态判断',
+            _AnimatedIn(
+              delay: 240,
+              child: _StatusGrid(
+                info: info,
+                diagnosis: diagnosis,
+              ),
+            ),
+
+            const SizedBox(height: 22),
+
+            const _AnimatedIn(
+              delay: 320,
+              child: AppSectionTitle(
+                title: '风险标签',
+                subtitle: '系统根据关键阈值识别当前家庭的主要问题',
+                icon: Icons.sell_rounded,
+              ),
             ),
 
             const SizedBox(height: 12),
 
-            GridView.count(
-              crossAxisCount: 2,
-              childAspectRatio: 1.08,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 14,
-              crossAxisSpacing: 14,
-              children: [
-                _StatusCard(
-                  icon: Icons.account_balance_wallet_rounded,
-                  title: '现金流状态',
-                  value: diagnosis.cashflowStatus,
-                  color: const Color(0xFF21A67A),
-                ),
-                _StatusCard(
-                  icon: Icons.school_rounded,
-                  title: '教育准备',
-                  value: diagnosis.educationReadiness,
-                  color: const Color(0xFF004B8D),
-                ),
-                _StatusCard(
-                  icon: Icons.health_and_safety_rounded,
-                  title: '风险保障',
-                  value: diagnosis.protectionStatus,
-                  color: const Color(0xFF2F80ED),
-                ),
-                _StatusCard(
-                  icon: Icons.bolt_rounded,
-                  title: '压力等级',
-                  value: diagnosis.pressureLevel,
-                  color: const Color(0xFFF5A623),
-                ),
-              ],
+            _AnimatedIn(
+              delay: 380,
+              child: Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: riskTags.map((tag) {
+                  final stable = tag == '结构较稳定';
+
+                  return AppPill(
+                    text: tag,
+                    icon: stable
+                        ? Icons.check_circle_rounded
+                        : Icons.error_rounded,
+                    color: stable ? AppColors.green : AppColors.primary,
+                    background: stable
+                        ? const Color(0xFFEAF8EF)
+                        : AppColors.primaryLight,
+                  );
+                }).toList(),
+              ),
             ),
 
-            const SizedBox(height: 18),
+            const SizedBox(height: 22),
 
-            const _SectionTitle(
-              title: '风险标签',
-              subtitle: '系统根据关键阈值识别当前家庭的主要问题',
-            ),
-
-            const SizedBox(height: 12),
-
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: riskTags
-                  .map(
-                    (tag) => _RiskTag(
-                      text: tag,
-                      isPositive: tag == '结构较稳定',
-                    ),
-                  )
-                  .toList(),
-            ),
-
-            const SizedBox(height: 18),
-
-            _SectionCard(
-              title: '模型发现的主要风险',
-              icon: Icons.warning_amber_rounded,
-              iconColor: const Color(0xFFE85D75),
-              children: diagnosis.risks
-                  .map(
-                    (risk) => _BulletItem(
-                      text: risk,
-                      color: const Color(0xFFE85D75),
-                    ),
-                  )
-                  .toList(),
-            ),
-
-            const SizedBox(height: 18),
-
-            _SectionCard(
-              title: '初步优化建议',
-              icon: Icons.lightbulb_rounded,
-              iconColor: const Color(0xFF004B8D),
-              children: diagnosis.suggestions
-                  .map(
-                    (item) => _BulletItem(
-                      text: item,
-                      color: const Color(0xFF004B8D),
-                    ),
-                  )
-                  .toList(),
+            _AnimatedIn(
+              delay: 460,
+              child: _AdviceCard(
+                title: 'AI 智能提示',
+                icon: Icons.auto_awesome_rounded,
+                children: [
+                  ...diagnosis.risks.map((item) => _Bullet(text: item)),
+                  ...diagnosis.suggestions.map((item) => _Bullet(text: item)),
+                ],
+              ),
             ),
 
             const SizedBox(height: 24),
 
-            SizedBox(
-              width: double.infinity,
-              height: 58,
-              child: FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF004B8D),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(19),
-                  ),
-                ),
-                icon: const Icon(Icons.description_rounded),
-                label: const Text(
-                  '查看 AI 规划报告',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 17,
-                  ),
-                ),
+            _AnimatedIn(
+              delay: 540,
+              child: AppPrimaryButton(
+                text: '查看规划报告',
+                icon: Icons.description_rounded,
                 onPressed: () {
                   Navigator.push(
                     context,
@@ -233,19 +169,6 @@ class DiagnosisPage extends StatelessWidget {
                 },
               ),
             ),
-
-            const SizedBox(height: 12),
-
-            const Center(
-              child: Text(
-                '评分由本地线性回归模型预测，仅用于原型演示',
-                style: TextStyle(
-                  color: Color(0xFF88889A),
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
           ],
         ),
       ),
@@ -253,201 +176,62 @@ class DiagnosisPage extends StatelessWidget {
   }
 }
 
-class _ScoreHeroCard extends StatelessWidget {
-  final int score;
-  final double progressValue;
-  final Color scoreColor;
-  final String scoreText;
-  final String description;
+class _AnimatedIn extends StatelessWidget {
+  final Widget child;
+  final int delay;
 
-  const _ScoreHeroCard({
-    required this.score,
-    required this.progressValue,
-    required this.scoreColor,
-    required this.scoreText,
-    required this.description,
+  const _AnimatedIn({
+    required this.child,
+    required this.delay,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(22, 22, 22, 24),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFF004B8D),
-            Color(0xFF2F7BC6),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF004B8D).withOpacity(0.24),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: Duration(milliseconds: 520 + delay),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 18 * (1 - value)),
+            child: child,
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          const Row(
-            children: [
-              Icon(
-                Icons.analytics_rounded,
-                color: Colors.white,
-                size: 30,
-              ),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  '综合财务健康评分',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              Text(
-                'Step 2 / 4',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              SizedBox(
-                width: 168,
-                height: 168,
-                child: CircularProgressIndicator(
-                  value: progressValue,
-                  strokeWidth: 13,
-                  backgroundColor: Colors.white24,
-                  valueColor: AlwaysStoppedAnimation<Color>(scoreColor),
-                  strokeCap: StrokeCap.round,
-                ),
-              ),
-              Container(
-                width: 128,
-                height: 128,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.18),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.22),
-                  ),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      '$score',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 48,
-                        height: 1,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      '/ 100',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Text(
-            scoreText,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 9),
-          Text(
-            description,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.92),
-              height: 1.55,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
+        );
+      },
+      child: child,
     );
   }
 }
 
-class _ModelExplainCard extends StatelessWidget {
-  final double savingRate;
-  final double educationRate;
+class _Greeting extends StatelessWidget {
+  final FamilyInfo info;
 
-  const _ModelExplainCard({
-    required this.savingRate,
-    required this.educationRate,
+  const _Greeting({
+    required this.info,
   });
 
   @override
   Widget build(BuildContext context) {
-    final savingPercent = (savingRate * 100).toStringAsFixed(1);
-    final educationPercent = (educationRate * 100).toStringAsFixed(1);
-
-    return Container(
-      width: double.infinity,
+    return AppCard(
+      color: Colors.white,
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(26),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF004B8D).withOpacity(0.08),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
       child: Row(
         children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: const Color(0xFF004B8D).withOpacity(0.11),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: const Icon(
-              Icons.psychology_alt_rounded,
-              color: Color(0xFF004B8D),
-              size: 28,
-            ),
+          const AppIconBox(
+            icon: Icons.waving_hand_rounded,
+            size: 48,
+            iconSize: 24,
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Text(
-              '模型特征已计算：储蓄率 $savingPercent%，教育支出占比 $educationPercent%。',
+              '您好，基于 ${info.childCount} 个孩子、${info.familyStructure} 的信息，AI 已生成以下诊断结果。',
               style: const TextStyle(
+                color: AppColors.text,
                 height: 1.5,
-                color: Color(0xFF44445A),
+                fontSize: 14,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -458,42 +242,394 @@ class _ModelExplainCard extends StatelessWidget {
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  final String title;
-  final String subtitle;
+class _ScoreCard extends StatelessWidget {
+  final int score;
+  final String scoreText;
 
-  const _SectionTitle({
-    required this.title,
-    required this.subtitle,
+  const _ScoreCard({
+    required this.score,
+    required this.scoreText,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 2),
+    return AppGradientCard(
+      radius: 30,
+      padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 17,
+          const Text(
+            '综合财务健康分',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
               fontWeight: FontWeight.w900,
-              color: Color(0xFF1F1F2E),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 18),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 0, end: score.toDouble()),
+                duration: const Duration(milliseconds: 850),
+                curve: Curves.easeOutCubic,
+                builder: (context, value, child) {
+                  return Text(
+                    '${value.round()}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 62,
+                      height: 1,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 6),
+              const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: Text(
+                  '分',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.20),
+                  borderRadius: BorderRadius.circular(99),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.18),
+                  ),
+                ),
+                child: Text(
+                  scoreText,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
           Text(
-            subtitle,
-            style: const TextStyle(
-              fontSize: 13,
-              height: 1.45,
-              color: Color(0xFF77778A),
-              fontWeight: FontWeight.w500,
+            score >= 80
+                ? '当前家庭财务结构较稳定，可继续保持储蓄节奏并定期复盘教育投入。'
+                : score >= 60
+                    ? '家庭具备一定基础，但建议优先关注应急金、教育储备和保障缺口。'
+                    : '当前家庭财务压力较明显，建议先稳定现金流，再逐步配置教育和保障。',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.92),
+              height: 1.55,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _FinancePieCard extends StatelessWidget {
+  final FamilyInfo info;
+
+  const _FinancePieCard({
+    required this.info,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final double income =
+        info.monthlyIncome <= 0 ? 1.0 : info.monthlyIncome.toDouble();
+
+    final double education =
+        info.educationExpense.clamp(0.0, income).toDouble();
+
+    final double otherExpense =
+        (info.monthlyExpense - info.educationExpense)
+            .clamp(0.0, income)
+            .toDouble();
+
+    final double saving =
+        (info.monthlyIncome - info.monthlyExpense)
+            .clamp(0.0, income)
+            .toDouble();
+
+    final double total = education + otherExpense + saving <= 0
+        ? 1.0
+        : education + otherExpense + saving;
+
+    final double educationRatio = education / total;
+    final double otherRatio = otherExpense / total;
+    final double savingRatio = saving / total;
+
+    return AppCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const AppSectionTitle(
+            title: '家庭支出结构',
+            subtitle: '根据收入、教育支出和其他支出生成结构图',
+            icon: Icons.pie_chart_rounded,
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 0, end: 1),
+                duration: const Duration(milliseconds: 900),
+                curve: Curves.easeOutCubic,
+                builder: (context, value, child) {
+                  return SizedBox(
+                    width: 132,
+                    height: 132,
+                    child: CustomPaint(
+                      painter: _PieChartPainter(
+                        progress: value,
+                        educationRatio: educationRatio,
+                        otherRatio: otherRatio,
+                        savingRatio: savingRatio,
+                      ),
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text(
+                              '储蓄率',
+                              style: TextStyle(
+                                color: AppColors.muted,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${(info.savingRate * 100).clamp(0, 100).toStringAsFixed(1)}%',
+                              style: const TextStyle(
+                                color: AppColors.title,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 18),
+              Expanded(
+                child: Column(
+                  children: [
+                    _LegendRow(
+                      color: AppColors.primary,
+                      title: '教育支出',
+                      value: '${(educationRatio * 100).toStringAsFixed(1)}%',
+                    ),
+                    const SizedBox(height: 12),
+                    _LegendRow(
+                      color: AppColors.gold,
+                      title: '其他支出',
+                      value: '${(otherRatio * 100).toStringAsFixed(1)}%',
+                    ),
+                    const SizedBox(height: 12),
+                    _LegendRow(
+                      color: AppColors.green,
+                      title: '可储蓄',
+                      value: '${(savingRatio * 100).toStringAsFixed(1)}%',
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PieChartPainter extends CustomPainter {
+  final double progress;
+  final double educationRatio;
+  final double otherRatio;
+  final double savingRatio;
+
+  _PieChartPainter({
+    required this.progress,
+    required this.educationRatio,
+    required this.otherRatio,
+    required this.savingRatio,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const double strokeWidth = 18.0;
+
+    final Rect rect = Offset.zero & size;
+    final Offset center = rect.center;
+    final double radius = (size.width - strokeWidth) / 2;
+
+    final Paint basePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round
+      ..color = const Color(0xFFF6DADA);
+
+    canvas.drawCircle(center, radius, basePaint);
+
+    final Paint paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    double startAngle = -math.pi / 2;
+    const double gap = 0.045;
+
+    void drawSegment(double ratio, Color color) {
+      final double sweep =
+          math.max(0.0, ratio * math.pi * 2 * progress - gap).toDouble();
+
+      if (sweep <= 0) return;
+
+      paint.color = color;
+
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        sweep,
+        false,
+        paint,
+      );
+
+      startAngle += ratio * math.pi * 2 * progress;
+    }
+
+    drawSegment(educationRatio, AppColors.primary);
+    drawSegment(otherRatio, AppColors.gold);
+    drawSegment(savingRatio, AppColors.green);
+  }
+
+  @override
+  bool shouldRepaint(covariant _PieChartPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.educationRatio != educationRatio ||
+        oldDelegate.otherRatio != otherRatio ||
+        oldDelegate.savingRatio != savingRatio;
+  }
+}
+
+class _LegendRow extends StatelessWidget {
+  final Color color;
+  final String title;
+  final String value;
+
+  const _LegendRow({
+    required this.color,
+    required this.title,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 11,
+          height: 11,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.text,
+              fontSize: 13.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            color: AppColors.title,
+            fontSize: 13.5,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatusGrid extends StatelessWidget {
+  final FamilyInfo info;
+  final DiagnosisResult diagnosis;
+
+  const _StatusGrid({
+    required this.info,
+    required this.diagnosis,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      childAspectRatio: 0.90,
+      mainAxisSpacing: 12,
+      crossAxisSpacing: 12,
+      children: [
+        _StatusCard(
+          icon: Icons.account_balance_wallet_rounded,
+          title: '现金流状态',
+          value: diagnosis.cashflowStatus,
+          subtitle: '储蓄率 ${(info.savingRate * 100).toStringAsFixed(1)}%',
+          color: AppColors.green,
+        ),
+        _StatusCard(
+          icon: Icons.school_rounded,
+          title: '教育准备',
+          value: diagnosis.educationReadiness,
+          subtitle: '教育占比 ${(info.educationRate * 100).toStringAsFixed(1)}%',
+          color: AppColors.gold,
+        ),
+        _StatusCard(
+          icon: Icons.health_and_safety_rounded,
+          title: '风险保障',
+          value: diagnosis.protectionStatus,
+          subtitle: info.hasBasicInsurance ? '已有基础保障' : '需要补齐保障',
+          color: AppColors.blue,
+        ),
+        _StatusCard(
+          icon: Icons.bolt_rounded,
+          title: '压力等级',
+          value: diagnosis.pressureLevel,
+          subtitle: '由模型与规则判断',
+          color: AppColors.primary,
+        ),
+      ],
     );
   }
 }
@@ -502,113 +638,64 @@ class _StatusCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String value;
+  final String subtitle;
   final Color color;
 
   const _StatusCard({
     required this.icon,
     required this.title,
     required this.value,
+    required this.subtitle,
     required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFFDCE8F7),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF004B8D).withOpacity(0.07),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
+    return AppCard(
+      padding: const EdgeInsets.all(14),
+      radius: 22,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(13),
-            ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 20,
-            ),
+          AppIconBox(
+            icon: icon,
+            color: color,
+            background: color.withValues(alpha: 0.12),
+            size: 42,
+            iconSize: 21,
           ),
-          const Spacer(),
+          const SizedBox(height: 12),
           Text(
             title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: Color(0xFF77778A),
-              fontWeight: FontWeight.w700,
+              color: AppColors.muted,
               fontSize: 12.5,
+              fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 5),
           Text(
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              fontSize: 17,
-              color: Color(0xFF1F1F2E),
+              color: AppColors.title,
+              fontSize: 18,
               fontWeight: FontWeight.w900,
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RiskTag extends StatelessWidget {
-  final String text;
-  final bool isPositive;
-
-  const _RiskTag({
-    required this.text,
-    required this.isPositive,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color =
-        isPositive ? const Color(0xFF21A67A) : const Color(0xFFE85D75);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.10),
-        borderRadius: BorderRadius.circular(99),
-        border: Border.all(
-          color: color.withOpacity(0.25),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isPositive ? Icons.check_circle_rounded : Icons.error_rounded,
-            color: color,
-            size: 16,
-          ),
-          const SizedBox(width: 6),
+          const SizedBox(height: 4),
           Text(
-            text,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w900,
-              fontSize: 13,
+            subtitle,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.muted,
+              fontSize: 11.5,
+              height: 1.25,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -617,70 +704,40 @@ class _RiskTag extends StatelessWidget {
   }
 }
 
-class _SectionCard extends StatelessWidget {
+class _AdviceCard extends StatelessWidget {
   final String title;
   final IconData icon;
-  final Color iconColor;
   final List<Widget> children;
 
-  const _SectionCard({
+  const _AdviceCard({
     required this.title,
     required this.icon,
-    required this.iconColor,
     required this.children,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
+    return AppCard(
+      color: AppColors.primaryLight,
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(
-          color: const Color(0xFFDCE8F7),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF004B8D).withOpacity(0.07),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: iconColor.withOpacity(0.11),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(
-                  icon,
-                  color: iconColor,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    color: Color(0xFF1F1F2E),
-                    fontWeight: FontWeight.w900,
-                  ),
+              AppIconBox(icon: icon),
+              const SizedBox(width: 12),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: AppColors.title,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           ...children,
         ],
       ),
@@ -688,28 +745,26 @@ class _SectionCard extends StatelessWidget {
   }
 }
 
-class _BulletItem extends StatelessWidget {
+class _Bullet extends StatelessWidget {
   final String text;
-  final Color color;
 
-  const _BulletItem({
+  const _Bullet({
     required this.text,
-    required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 11),
+      padding: const EdgeInsets.only(bottom: 9),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 8,
-            height: 8,
-            margin: const EdgeInsets.only(top: 7),
-            decoration: BoxDecoration(
-              color: color,
+            width: 7,
+            height: 7,
+            margin: const EdgeInsets.only(top: 8),
+            decoration: const BoxDecoration(
+              color: AppColors.primary,
               shape: BoxShape.circle,
             ),
           ),
@@ -718,10 +773,10 @@ class _BulletItem extends StatelessWidget {
             child: Text(
               text,
               style: const TextStyle(
+                color: AppColors.text,
                 height: 1.55,
-                fontSize: 15,
-                color: Color(0xFF44445A),
-                fontWeight: FontWeight.w500,
+                fontSize: 14.5,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/family_info.dart';
 import '../services/finance_task_service.dart';
 import '../widgets/app_bottom_step_bar.dart';
+import '../widgets/app_ui.dart';
 
 class ParentChildPage extends StatefulWidget {
   final FamilyInfo info;
@@ -30,23 +31,18 @@ class _ParentChildPageState extends State<ParentChildPage> {
   @override
   void initState() {
     super.initState();
-
     task = widget.financeTaskService.generateWeeklyTask(widget.info);
     challenge = widget.financeTaskService.generateSavingChallenge(widget.info);
     tip = widget.financeTaskService.generateConversationTip(widget.info);
     basePoints = widget.financeTaskService.generateBasePoints(widget.info);
   }
 
-  int get earnedTaskPoints {
-    int points = 0;
-
+  int get totalPoints {
+    int points = basePoints;
     if (taskCompleted) points += task.points;
     if (challengeCompleted) points += challenge.points;
-
     return points;
   }
-
-  int get totalPoints => basePoints + earnedTaskPoints;
 
   int get currentLevel {
     if (totalPoints >= 80) return 4;
@@ -70,7 +66,7 @@ class _ParentChildPageState extends State<ParentChildPage> {
   double get levelProgress {
     if (totalPoints >= 100) return 1.0;
 
-    final previousTarget = currentLevel == 1
+    final previous = currentLevel == 1
         ? 0
         : currentLevel == 2
             ? 25
@@ -78,10 +74,8 @@ class _ParentChildPageState extends State<ParentChildPage> {
                 ? 50
                 : 80;
 
-    final range = nextLevelTarget - previousTarget;
-    final progress = (totalPoints - previousTarget) / range;
-
-    return progress.clamp(0.0, 1.0);
+    return ((totalPoints - previous) / (nextLevelTarget - previous))
+        .clamp(0.0, 1.0);
   }
 
   String get levelName {
@@ -99,19 +93,12 @@ class _ParentChildPageState extends State<ParentChildPage> {
 
   void completeTask(String type) {
     final oldLevel = currentLevel;
-    final int addedPoints = type == 'task' ? task.points : challenge.points;
+    final added = type == 'task' ? task.points : challenge.points;
 
     setState(() {
-      if (type == 'task') {
-        taskCompleted = true;
-      }
-
-      if (type == 'challenge') {
-        challengeCompleted = true;
-      }
+      if (type == 'task') taskCompleted = true;
+      if (type == 'challenge') challengeCompleted = true;
     });
-
-    final newLevel = currentLevel;
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -120,98 +107,21 @@ class _ParentChildPageState extends State<ParentChildPage> {
               ? '家庭小任务已完成，积分 +${task.points}'
               : '储蓄挑战已完成，积分 +${challenge.points}',
         ),
+        backgroundColor: AppColors.primary,
         behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF004B8D),
         duration: const Duration(milliseconds: 1300),
       ),
     );
 
-    if (newLevel > oldLevel) {
+    if (currentLevel > oldLevel) {
       Future.delayed(const Duration(milliseconds: 450), () {
         if (!mounted) return;
-
         showDialog(
           context: context,
-          builder: (_) {
-            return Dialog(
-              backgroundColor: Colors.transparent,
-              child: Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF004B8D).withOpacity(0.18),
-                      blurRadius: 30,
-                      offset: const Offset(0, 14),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 72,
-                      height: 72,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFD71920).withOpacity(0.10),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.emoji_events_rounded,
-                        color: Color(0xFFD71920),
-                        size: 42,
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    const Text(
-                      '恭喜升级！',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF1F1F2E),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '完成任务获得 $addedPoints 分\n当前等级：$levelName',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        height: 1.55,
-                        fontSize: 15,
-                        color: Color(0xFF44445A),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 22),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF004B8D),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        child: const Text(
-                          '太棒了',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
+          builder: (_) => _LevelUpDialog(
+            levelName: levelName,
+            addedPoints: added,
+          ),
         );
       });
     }
@@ -239,25 +149,17 @@ class _ParentChildPageState extends State<ParentChildPage> {
                     width: 44,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFDCE8F7),
+                      color: AppColors.border,
                       borderRadius: BorderRadius.circular(99),
                     ),
                   ),
                   const SizedBox(height: 22),
                   Row(
                     children: [
-                      Container(
-                        width: 54,
-                        height: 54,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF004B8D).withOpacity(0.10),
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: const Icon(
-                          Icons.stars_rounded,
-                          color: Color(0xFF004B8D),
-                          size: 32,
-                        ),
+                      const AppIconBox(
+                        icon: Icons.stars_rounded,
+                        size: 54,
+                        iconSize: 30,
                       ),
                       const SizedBox(width: 15),
                       Expanded(
@@ -267,16 +169,16 @@ class _ParentChildPageState extends State<ParentChildPage> {
                             const Text(
                               '亲子积分详情',
                               style: TextStyle(
+                                color: AppColors.title,
                                 fontSize: 20,
                                 fontWeight: FontWeight.w900,
-                                color: Color(0xFF1F1F2E),
                               ),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               levelName,
                               style: const TextStyle(
-                                color: Color(0xFF77778A),
+                                color: AppColors.muted,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -286,65 +188,65 @@ class _ParentChildPageState extends State<ParentChildPage> {
                       Text(
                         '$totalPoints 分',
                         style: const TextStyle(
-                          color: Color(0xFF004B8D),
+                          color: AppColors.primary,
                           fontSize: 24,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 20),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(99),
                     child: LinearProgressIndicator(
                       value: levelProgress,
                       minHeight: 10,
-                      backgroundColor: const Color(0xFFEAF1FA),
+                      backgroundColor: const Color(0xFFF7D8D8),
                       valueColor: const AlwaysStoppedAnimation<Color>(
-                        Color(0xFFD71920),
+                        AppColors.primary,
                       ),
                     ),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     pointsToNextLevel == 0
-                        ? '已经达到当前原型的最高等级。'
+                        ? '已经达到当前最高等级。'
                         : '距离下一级还差 $pointsToNextLevel 分。',
                     style: const TextStyle(
-                      color: Color(0xFF44445A),
+                      color: AppColors.text,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  _PointDetailRow(
+                  const SizedBox(height: 18),
+                  _PointRow(
                     label: '基础积分',
                     value: '+$basePoints',
                     completed: true,
                   ),
-                  _PointDetailRow(
+                  _PointRow(
                     label: '完成家庭小任务',
                     value: '+${task.points}',
                     completed: taskCompleted,
                   ),
-                  _PointDetailRow(
+                  _PointRow(
                     label: '完成储蓄挑战',
                     value: '+${challenge.points}',
                     completed: challengeCompleted,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(15),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF5F8FF),
+                      color: AppColors.primaryLight,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: const Text(
-                      '升级规则：25 分升到 Level 2，50 分升到 Level 3，80 分升到 Level 4。积分用于鼓励亲子持续完成财商任务。',
+                      '升级规则：25 分升到 Level 2，50 分升到 Level 3，80 分升到 Level 4。',
                       style: TextStyle(
+                        color: AppColors.text,
                         height: 1.55,
-                        color: Color(0xFF44445A),
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
@@ -360,55 +262,56 @@ class _ParentChildPageState extends State<ParentChildPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F8FF),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF5F8FF),
-        title: const Text(
-          '亲子财商陪伴',
-          style: TextStyle(fontWeight: FontWeight.w900),
-        ),
+        backgroundColor: AppColors.background,
+        elevation: 0,
         centerTitle: true,
+        title: const Text(
+          '亲子财商成长',
+          style: TextStyle(
+            color: AppColors.title,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
       ),
       bottomNavigationBar: const AppBottomStepBar(currentStep: 4),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+        padding: const EdgeInsets.fromLTRB(22, 8, 22, 28),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _HeroCard(childAge: widget.info.childAge),
-            const SizedBox(height: 18),
-            const _SectionTitle(
-              title: '本周亲子任务',
-              subtitle: '完成家庭小任务和储蓄挑战后会自动增加亲子积分',
+            const AppSectionTitle(
+              title: '本周任务',
+              subtitle: '完成任务获得积分，培养孩子的理财好习惯',
+              icon: Icons.calendar_month_rounded,
             ),
-            const SizedBox(height: 12),
-            _MainTaskCard(
+            const SizedBox(height: 16),
+            _TaskCard(
               title: '家庭小任务',
               content: task.content,
-              icon: Icons.assignment_turned_in_rounded,
-              color: const Color(0xFF004B8D),
-              badge: 'Task 01',
+              tag: '财商认知',
               points: task.points,
+              icon: Icons.assignment_turned_in_rounded,
               completed: taskCompleted,
-              onComplete: () => completeTask('task'),
+              onTap: () => completeTask('task'),
             ),
-            _MainTaskCard(
+            _TaskCard(
               title: '储蓄挑战',
               content: challenge.content,
-              icon: Icons.savings_rounded,
-              color: const Color(0xFF21A67A),
-              badge: 'Task 02',
+              tag: '储蓄习惯',
               points: challenge.points,
+              icon: Icons.savings_rounded,
               completed: challengeCompleted,
-              onComplete: () => completeTask('challenge'),
-            ),
-            _ConversationCard(content: tip),
-            const SizedBox(height: 18),
-            const _SectionTitle(
-              title: '亲子积分',
-              subtitle: '点击积分卡片查看等级、进度和积分明细',
+              onTap: () => completeTask('challenge'),
             ),
             const SizedBox(height: 12),
+            const AppSectionTitle(
+              title: '亲子积分',
+              subtitle: '点击积分卡片查看等级和积分明细',
+              icon: Icons.stars_rounded,
+            ),
+            const SizedBox(height: 14),
             GestureDetector(
               onTap: showPointsDetail,
               child: _PointsCard(
@@ -418,38 +321,29 @@ class _ParentChildPageState extends State<ParentChildPage> {
                 pointsToNextLevel: pointsToNextLevel,
               ),
             ),
-            const SizedBox(height: 18),
-            _ChecklistCard(
-              taskCompleted: taskCompleted,
-              challengeCompleted: challengeCompleted,
+            const SizedBox(height: 22),
+            const AppSectionTitle(
+              title: '沟通小贴士',
+              subtitle: '帮助家长用简单语言和孩子讨论金钱',
+              icon: Icons.chat_bubble_outline_rounded,
             ),
-            const SizedBox(height: 18),
-            _NoteCard(),
-            const SizedBox(height: 18),
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF004B8D),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(19),
-                  ),
-                ),
-                onPressed: () {
-                  Navigator.popUntil(context, (route) => route.isFirst);
-                },
-                icon: const Icon(Icons.home_rounded),
-                label: const Text(
-                  '返回首页',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 16.5,
-                  ),
-                ),
-              ),
+            const SizedBox(height: 14),
+            _TipCard(text: tip),
+            const SizedBox(height: 22),
+            const AppSectionTitle(
+              title: '月度活动推荐',
+              subtitle: '趣味财商游戏，让孩子在玩乐中学习',
+              icon: Icons.card_giftcard_rounded,
+            ),
+            const SizedBox(height: 14),
+            const _ActivityCard(),
+            const SizedBox(height: 24),
+            AppPrimaryButton(
+              text: '返回首页',
+              icon: Icons.home_rounded,
+              onPressed: () {
+                Navigator.popUntil(context, (route) => route.isFirst);
+              },
             ),
           ],
         ),
@@ -458,364 +352,110 @@ class _ParentChildPageState extends State<ParentChildPage> {
   }
 }
 
-class _HeroCard extends StatelessWidget {
-  final int childAge;
-
-  const _HeroCard({
-    required this.childAge,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFF004B8D),
-            Color(0xFF2F7BC6),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF004B8D).withOpacity(0.24),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(
-                Icons.family_restroom_rounded,
-                color: Colors.white,
-                size: 34,
-              ),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  '亲子财商陪伴',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              Text(
-                'Step 4 / 4',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Text(
-            '$childAge 岁孩子的本周财商计划',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 26,
-              height: 1.15,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            '系统根据孩子年龄和家庭财务状态，智能匹配适合本周完成的亲子任务、储蓄挑战和沟通话术。',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.92),
-              height: 1.6,
-              fontSize: 14.5,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: const [
-              _HeroPill(
-                icon: Icons.task_alt_rounded,
-                text: '任务陪伴',
-              ),
-              SizedBox(width: 10),
-              _HeroPill(
-                icon: Icons.emoji_events_rounded,
-                text: '积分激励',
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeroPill extends StatelessWidget {
-  final IconData icon;
-  final String text;
-
-  const _HeroPill({
-    required this.icon,
-    required this.text,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.20),
-          borderRadius: BorderRadius.circular(99),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.24),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: Colors.white,
-              size: 17,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              text,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w900,
-                fontSize: 13,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MainTaskCard extends StatelessWidget {
+class _TaskCard extends StatelessWidget {
   final String title;
   final String content;
-  final IconData icon;
-  final Color color;
-  final String badge;
+  final String tag;
   final int points;
+  final IconData icon;
   final bool completed;
-  final VoidCallback onComplete;
+  final VoidCallback onTap;
 
-  const _MainTaskCard({
+  const _TaskCard({
     required this.title,
     required this.content,
-    required this.icon,
-    required this.color,
-    required this.badge,
+    required this.tag,
     required this.points,
+    required this.icon,
     required this.completed,
-    required this.onComplete,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 350),
-      curve: Curves.easeOutCubic,
+    return AppCard(
       margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(
-          color: completed ? color.withOpacity(0.35) : const Color(0xFFDCE8F7),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(completed ? 0.14 : 0.08),
-            blurRadius: completed ? 22 : 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
+      padding: const EdgeInsets.all(18),
+      border: Border.all(
+        color: completed ? AppColors.primary : AppColors.border,
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 350),
-                curve: Curves.easeOutCubic,
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(completed ? 0.18 : 0.12),
-                  borderRadius: BorderRadius.circular(17),
-                ),
-                child: Icon(
-                  completed ? Icons.check_rounded : icon,
-                  color: color,
-                  size: 26,
-                ),
-              ),
-              const SizedBox(width: 13),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      badge,
-                      style: TextStyle(
-                        color: color,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: Color(0xFF1F1F2E),
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.10),
-                  borderRadius: BorderRadius.circular(99),
-                ),
-                child: Text(
-                  '+$points',
-                  style: TextStyle(
-                    color: color,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            content,
-            style: const TextStyle(
-              height: 1.6,
-              fontSize: 15,
-              color: Color(0xFF44445A),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            height: 44,
-            child: FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: completed ? const Color(0xFFEAF1FA) : color,
-                foregroundColor:
-                    completed ? const Color(0xFF004B8D) : Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
-                ),
-              ),
-              onPressed: completed ? null : onComplete,
-              icon: Icon(
-                completed ? Icons.check_circle_rounded : Icons.add_task_rounded,
-              ),
-              label: Text(
-                completed ? '已完成' : '完成任务',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ConversationCard extends StatelessWidget {
-  final String content;
-
-  const _ConversationCard({
-    required this.content,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1F1F2E),
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1F1F2E).withOpacity(0.16),
-            blurRadius: 20,
-            offset: const Offset(0, 9),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
               Icon(
-                Icons.chat_bubble_rounded,
-                color: Colors.white,
-                size: 25,
+                completed
+                    ? Icons.check_box_rounded
+                    : Icons.check_box_outline_blank_rounded,
+                color: AppColors.primary,
+                size: 24,
               ),
-              SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  '智能建议沟通方式',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
+                  title,
+                  style: const TextStyle(
+                    color: AppColors.title,
+                    fontSize: 17,
                     fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              AppPill(
+                text: completed ? '已完成' : '+$points 积分',
+                icon: completed ? Icons.check_rounded : Icons.star_border_rounded,
+                background: completed ? AppColors.primary : AppColors.primaryLight,
+                color: completed ? Colors.white : AppColors.primary,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              AppIconBox(icon: icon, size: 46, iconSize: 23),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  content,
+                  style: const TextStyle(
+                    color: AppColors.text,
+                    height: 1.55,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(17),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.10),
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.12),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              AppPill(
+                text: tag,
+                color: AppColors.gold,
+                background: const Color(0xFFFFF6DE),
               ),
-            ),
-            child: Text(
-              '“$content”',
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.92),
-                height: 1.65,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
+              const Spacer(),
+              SizedBox(
+                height: 38,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.primary),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  onPressed: completed ? null : onTap,
+                  child: Text(
+                    completed ? '已完成' : '完成',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ],
       ),
@@ -838,50 +478,21 @@ class _PointsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 450),
-      curve: Curves.easeOutCubic,
-      width: double.infinity,
+    return AppGradientCard(
+      radius: 28,
       padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: const Color(0xFF004B8D),
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF004B8D).withOpacity(0.22),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
       child: Column(
         children: [
           Row(
             children: [
-              TweenAnimationBuilder<double>(
-                tween: Tween<double>(end: progress),
-                duration: const Duration(milliseconds: 700),
-                curve: Curves.easeOutBack,
-                builder: (context, value, child) {
-                  return Transform.scale(
-                    scale: 1.0 + value * 0.05,
-                    child: Container(
-                      width: 54,
-                      height: 54,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.18),
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: const Icon(
-                        Icons.stars_rounded,
-                        color: Colors.white,
-                        size: 32,
-                      ),
-                    ),
-                  );
-                },
+              const AppIconBox(
+                icon: Icons.stars_rounded,
+                color: Colors.white,
+                background: Colors.white24,
+                size: 54,
+                iconSize: 30,
               ),
-              const SizedBox(width: 15),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -890,11 +501,10 @@ class _PointsCard extends StatelessWidget {
                       '本周亲子积分',
                       style: TextStyle(
                         color: Colors.white70,
-                        fontSize: 13.5,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 5),
                     TweenAnimationBuilder<double>(
                       tween: Tween<double>(end: points.toDouble()),
                       duration: const Duration(milliseconds: 650),
@@ -911,29 +521,13 @@ class _PointsCard extends StatelessWidget {
                         );
                       },
                     ),
-                    const SizedBox(height: 4),
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 350),
-                      transitionBuilder: (child, animation) {
-                        return FadeTransition(
-                          opacity: animation,
-                          child: SlideTransition(
-                            position: Tween<Offset>(
-                              begin: const Offset(0, 0.25),
-                              end: Offset.zero,
-                            ).animate(animation),
-                            child: child,
-                          ),
-                        );
-                      },
-                      child: Text(
-                        levelName,
-                        key: ValueKey(levelName),
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.82),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12.5,
-                        ),
+                    const SizedBox(height: 5),
+                    Text(
+                      levelName,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.85),
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
@@ -942,7 +536,6 @@ class _PointsCard extends StatelessWidget {
               const Icon(
                 Icons.keyboard_arrow_up_rounded,
                 color: Colors.white,
-                size: 28,
               ),
             ],
           ),
@@ -957,33 +550,57 @@ class _PointsCard extends StatelessWidget {
                 child: LinearProgressIndicator(
                   value: value,
                   minHeight: 9,
-                  backgroundColor: Colors.white.withOpacity(0.22),
+                  backgroundColor: Colors.white24,
                   valueColor: const AlwaysStoppedAnimation<Color>(
-                    Color(0xFFD71920),
+                    Colors.white,
                   ),
                 ),
               );
             },
           ),
           const SizedBox(height: 10),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 350),
-            transitionBuilder: (child, animation) {
-              return FadeTransition(
-                opacity: animation,
-                child: child,
-              );
-            },
+          Text(
+            pointsToNextLevel == 0
+                ? '已达到当前最高等级，点击查看积分明细。'
+                : '还差 $pointsToNextLevel 分升到下一级，点击查看详情。',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.86),
+              height: 1.45,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TipCard extends StatelessWidget {
+  final String text;
+
+  const _TipCard({
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      color: AppColors.primaryLight,
+      padding: const EdgeInsets.all(18),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const AppIconBox(icon: Icons.chat_bubble_rounded),
+          const SizedBox(width: 14),
+          Expanded(
             child: Text(
-              pointsToNextLevel == 0
-                  ? '已达到当前最高等级，点击查看积分明细。'
-                  : '还差 $pointsToNextLevel 分升到下一级，点击查看详情。',
-              key: ValueKey(pointsToNextLevel),
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.86),
-                height: 1.45,
-                fontSize: 13.2,
-                fontWeight: FontWeight.w600,
+              text,
+              style: const TextStyle(
+                color: AppColors.text,
+                height: 1.6,
+                fontSize: 14.5,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -993,12 +610,75 @@ class _PointsCard extends StatelessWidget {
   }
 }
 
-class _PointDetailRow extends StatelessWidget {
+class _ActivityCard extends StatelessWidget {
+  const _ActivityCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              AppIconBox(icon: Icons.track_changes_rounded),
+              SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  '小小理财师',
+                  style: TextStyle(
+                    color: AppColors.title,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            '给孩子 100 元，让 TA 规划一次全家周末活动。',
+            style: TextStyle(
+              color: AppColors.text,
+              height: 1.55,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: const [
+              AppPill(
+                text: '8–12 岁',
+                color: AppColors.primary,
+                background: AppColors.primaryLight,
+              ),
+              SizedBox(width: 8),
+              AppPill(
+                text: '30 分钟',
+                color: AppColors.gold,
+                background: Color(0xFFFFF6DE),
+              ),
+              SizedBox(width: 8),
+              AppPill(
+                text: '中等',
+                color: AppColors.blue,
+                background: Color(0xFFEAF1FF),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PointRow extends StatelessWidget {
   final String label;
   final String value;
   final bool completed;
 
-  const _PointDetailRow({
+  const _PointRow({
     required this.label,
     required this.value,
     required this.completed,
@@ -1007,10 +687,10 @@ class _PointDetailRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 9),
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: completed ? const Color(0xFFF5F8FF) : const Color(0xFFF7F7FA),
+        color: completed ? AppColors.primaryLight : const Color(0xFFF7F4F4),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Row(
@@ -1019,16 +699,14 @@ class _PointDetailRow extends StatelessWidget {
             completed
                 ? Icons.check_circle_rounded
                 : Icons.radio_button_unchecked_rounded,
-            color:
-                completed ? const Color(0xFF004B8D) : const Color(0xFFAAAAAA),
-            size: 22,
+            color: completed ? AppColors.primary : AppColors.hint,
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               label,
               style: const TextStyle(
-                color: Color(0xFF44445A),
+                color: AppColors.text,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -1036,8 +714,7 @@ class _PointDetailRow extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              color:
-                  completed ? const Color(0xFFD71920) : const Color(0xFFAAAAAA),
+              color: completed ? AppColors.primary : AppColors.hint,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -1047,196 +724,59 @@ class _PointDetailRow extends StatelessWidget {
   }
 }
 
-class _ChecklistCard extends StatelessWidget {
-  final bool taskCompleted;
-  final bool challengeCompleted;
+class _LevelUpDialog extends StatelessWidget {
+  final String levelName;
+  final int addedPoints;
 
-  const _ChecklistCard({
-    required this.taskCompleted,
-    required this.challengeCompleted,
+  const _LevelUpDialog({
+    required this.levelName,
+    required this.addedPoints,
   });
 
   @override
   Widget build(BuildContext context) {
-    final items = [
-      _ChecklistItemData(
-        text: '完成一次家庭小任务',
-        completed: taskCompleted,
-      ),
-      _ChecklistItemData(
-        text: '完成一次储蓄挑战',
-        completed: challengeCompleted,
-      ),
-    ];
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(
-          color: const Color(0xFFDCE8F7),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF004B8D).withOpacity(0.07),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(
-                Icons.checklist_rounded,
-                color: Color(0xFF004B8D),
-              ),
-              SizedBox(width: 10),
-              Text(
-                '本周完成清单',
-                style: TextStyle(
-                  color: Color(0xFF1F1F2E),
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          ...items.map(
-            (item) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(
-                children: [
-                  Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      color: item.completed
-                          ? const Color(0xFF004B8D)
-                          : const Color(0xFFEAF1FA),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      item.completed
-                          ? Icons.check_rounded
-                          : Icons.more_horiz_rounded,
-                      color: item.completed
-                          ? Colors.white
-                          : const Color(0xFF004B8D),
-                      size: 16,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      item.text,
-                      style: TextStyle(
-                        color: const Color(0xFF44445A),
-                        fontWeight:
-                            item.completed ? FontWeight.w900 : FontWeight.w700,
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                ],
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: AppCard(
+        padding: const EdgeInsets.all(24),
+        radius: 30,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const AppIconBox(
+              icon: Icons.emoji_events_rounded,
+              size: 72,
+              iconSize: 42,
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              '恭喜升级！',
+              style: TextStyle(
+                color: AppColors.title,
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ChecklistItemData {
-  final String text;
-  final bool completed;
-
-  const _ChecklistItemData({
-    required this.text,
-    required this.completed,
-  });
-}
-
-class _NoteCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF5F8FF),
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(
-          color: const Color(0xFFDCE8F7),
-        ),
-      ),
-      child: const Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            Icons.info_rounded,
-            color: Color(0xFF004B8D),
-            size: 24,
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              '原型阶段使用规则模板生成亲子财商任务，不接入大语言模型，保证内容稳定可控。',
-              style: TextStyle(
-                color: Color(0xFF004B8D),
+            const SizedBox(height: 8),
+            Text(
+              '完成任务获得 $addedPoints 分\n当前等级：$levelName',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.text,
                 height: 1.55,
-                fontSize: 13.5,
+                fontSize: 15,
                 fontWeight: FontWeight.w700,
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  final String title;
-  final String subtitle;
-
-  const _SectionTitle({
-    required this.title,
-    required this.subtitle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 2),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w900,
-              color: Color(0xFF1F1F2E),
+            const SizedBox(height: 22),
+            AppPrimaryButton(
+              text: '太棒了',
+              onPressed: () {
+                Navigator.pop(context);
+              },
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              fontSize: 13,
-              height: 1.45,
-              color: Color(0xFF77778A),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

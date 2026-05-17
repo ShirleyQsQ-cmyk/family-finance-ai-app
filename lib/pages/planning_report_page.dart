@@ -4,8 +4,9 @@ import '../models/diagnosis_result.dart';
 import '../models/education_plan.dart';
 import '../models/family_info.dart';
 import '../services/finance_task_service.dart';
-import 'parent_child_page.dart';
 import '../widgets/app_bottom_step_bar.dart';
+import '../widgets/app_ui.dart';
+import 'parent_child_page.dart';
 
 class PlanningReportPage extends StatelessWidget {
   final FamilyInfo info;
@@ -21,459 +22,157 @@ class PlanningReportPage extends StatelessWidget {
     required this.financeTaskService,
   });
 
+  int get totalEducationTarget {
+  return 250000;
+}
+
+int get suggestedMonthlySaving {
+  final yearsLeft = (18 - info.childAge).clamp(1, 18);
+  return (totalEducationTarget / (yearsLeft * 12)).round();
+}
+
   @override
   Widget build(BuildContext context) {
+    final stages = [
+      _EducationStage(
+        title: '小学',
+        ageRange: '6–12 岁',
+        description: '基础教育及课外兴趣班',
+        amount: 50000,
+        yearsLater: (6 - info.childAge).clamp(0, 18),
+        active: info.childAge <= 12,
+      ),
+      _EducationStage(
+        title: '初中',
+        ageRange: '12–15 岁',
+        description: '学科培训与素质拓展',
+        amount: 80000,
+        yearsLater: (12 - info.childAge).clamp(0, 18),
+        active: info.childAge > 12 && info.childAge <= 15,
+      ),
+      _EducationStage(
+        title: '高中',
+        ageRange: '15–18 岁',
+        description: '升学准备与专业辅导',
+        amount: 120000,
+        yearsLater: (15 - info.childAge).clamp(0, 18),
+        active: info.childAge > 15 && info.childAge <= 18,
+      ),
+      _EducationStage(
+        title: '大学本科',
+        ageRange: '18–22 岁',
+        description: '学费、住宿及生活费',
+        amount: 200000,
+        yearsLater: (18 - info.childAge).clamp(0, 18),
+        active: info.childAge > 18,
+      ),
+    ];
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F8FF),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF5F8FF),
-        title: const Text(
-          'AI 规划报告',
-          style: TextStyle(fontWeight: FontWeight.w900),
-        ),
+        backgroundColor: AppColors.background,
+        elevation: 0,
         centerTitle: true,
+        title: const Text(
+          '规划报告',
+          style: TextStyle(
+            color: AppColors.title,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
       ),
       bottomNavigationBar: const AppBottomStepBar(currentStep: 3),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+        padding: const EdgeInsets.fromLTRB(22, 8, 22, 28),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _ReportHeroCard(
-              score: diagnosis.financialHealthScore,
-              pressureLevel: diagnosis.pressureLevel,
-              mainGoal: info.mainGoal,
-            ),
-
-            const SizedBox(height: 18),
-
-            const _SectionTitle(
-              title: '教育金规划助手',
-              subtitle: '根据孩子年龄和当前教育支出估算未来储备目标',
-            ),
-
-            const SizedBox(height: 12),
-
-            _EducationSummaryCard(
-              targetAmount: educationPlan.targetAmount,
-              gapAmount: educationPlan.gapAmount,
-              suggestedMonthlySaving: educationPlan.suggestedMonthlySaving,
-            ),
-
-            const SizedBox(height: 18),
-
-            const _SectionTitle(
-              title: '分阶段家庭规划',
-              subtitle: '从现金流安全垫开始，再逐步建立教育储备和保障结构',
-            ),
-
-            const SizedBox(height: 12),
-
-            _TimelineCard(
-              step: '01',
-              period: '短期 · 0–6 个月',
-              title: '先稳定家庭安全垫',
-              content:
-                  '优先控制高波动育儿支出，建立 3–6 个月家庭应急储备，避免突发支出影响日常现金流。',
-              color: const Color(0xFF21A67A),
-              icon: Icons.security_rounded,
-              isFirst: true,
-            ),
-
-            _TimelineCard(
-              step: '02',
-              period: '中期 · 6 个月–3 年',
-              title: '逐步建立教育储备',
-              content: educationPlan.planSummary,
-              color: const Color(0xFF004B8D),
+            const AppSectionTitle(
+              title: '分阶段教育支出估算',
+              subtitle: '根据孩子年龄和家庭情况生成教育储备路径',
               icon: Icons.school_rounded,
             ),
-
-            _TimelineCard(
-              step: '03',
-              period: '长期 · 3 年以上',
-              title: '完善保障与周期复盘',
-              content:
-                  '逐步补齐家庭基础保障，并根据孩子成长阶段，每 3–6 个月复盘教育支出、储蓄目标和家庭保障结构。',
-              color: const Color(0xFFF5A623),
-              icon: Icons.repeat_rounded,
-              isLast: true,
-            ),
-
+            const SizedBox(height: 16),
+            ...stages.map((stage) {
+              return _StageCard(stage: stage);
+            }),
             const SizedBox(height: 18),
-
-            _ActionListCard(items: diagnosis.suggestions),
-
-            const SizedBox(height: 18),
-
-            _ModelNoteCard(),
-
-            const SizedBox(height: 24),
-
-            SizedBox(
-              width: double.infinity,
-              height: 58,
-              child: FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF004B8D),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(19),
-                  ),
-                ),
-                icon: const Icon(Icons.child_friendly_rounded),
-                label: const Text(
-                  '进入亲子财商陪伴',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 17,
-                  ),
-                ),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ParentChildPage(
-                        info: info,
-                        financeTaskService: financeTaskService,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            const Center(
-              child: Text(
-                '报告基于本地模型评分与规则引擎生成，仅用于原型演示',
-                style: TextStyle(
-                  color: Color(0xFF88889A),
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ReportHeroCard extends StatelessWidget {
-  final int score;
-  final String pressureLevel;
-  final String mainGoal;
-
-  const _ReportHeroCard({
-    required this.score,
-    required this.pressureLevel,
-    required this.mainGoal,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFF2F80ED),
-            Color(0xFF004B8D),
-            Color(0xFF2F7BC6),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF004B8D).withOpacity(0.24),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(
-                Icons.description_rounded,
-                color: Colors.white,
-                size: 32,
-              ),
-              SizedBox(width: 10),
-              Text(
-                '家庭规划报告',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              Spacer(),
-              Text(
-                'Step 3 / 4',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 22),
-          Row(
-            children: [
-              _HeroMetric(
-                label: '综合评分',
-                value: '$score',
-              ),
-              const SizedBox(width: 12),
-              _HeroMetric(
-                label: '压力等级',
-                value: pressureLevel,
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Text(
-            '主要目标：$mainGoal',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.95),
-              height: 1.55,
-              fontSize: 14.5,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            '建议围绕“应急金优先、教育金分期、保障逐步补齐”的顺序执行，避免单一大额教育支出冲击家庭现金流。',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.90),
-              height: 1.55,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeroMetric extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _HeroMetric({
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.17),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.24),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.82),
-                fontWeight: FontWeight.w700,
-                fontSize: 12.5,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 26,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _EducationSummaryCard extends StatelessWidget {
-  final double targetAmount;
-  final double gapAmount;
-  final double suggestedMonthlySaving;
-
-  const _EducationSummaryCard({
-    required this.targetAmount,
-    required this.gapAmount,
-    required this.suggestedMonthlySaving,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(
-          color: const Color(0xFFDCE8F7),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF004B8D).withOpacity(0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              _MoneyMiniCard(
-                icon: Icons.flag_rounded,
-                label: '目标金额',
-                amount: targetAmount,
-                color: const Color(0xFF004B8D),
-              ),
-              const SizedBox(width: 12),
-              _MoneyMiniCard(
-                icon: Icons.trending_up_rounded,
-                label: '当前缺口',
-                amount: gapAmount,
-                color: const Color(0xFFE85D75),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(17),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF5F8FF),
-              borderRadius: BorderRadius.circular(22),
-            ),
-            child: Row(
+            Row(
               children: [
-                Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF21A67A).withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Icon(
-                    Icons.calendar_month_rounded,
-                    color: Color(0xFF21A67A),
+                Expanded(
+                  child: _SummaryCard(
+                    icon: Icons.layers_rounded,
+                    title: '教育储备总目标',
+                    value: '¥$totalEducationTarget',
                   ),
                 ),
-                const SizedBox(width: 13),
+                const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: _SummaryCard(
+                    icon: Icons.savings_rounded,
+                    title: '建议每月储蓄',
+                    value: '¥$suggestedMonthlySaving',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            AppCard(
+              color: AppColors.primaryLight,
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
                     children: [
-                      const Text(
-                        '建议每月储备',
-                        style: TextStyle(
-                          color: Color(0xFF77778A),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      AppIconBox(
+                        icon: Icons.auto_awesome_rounded,
+                        size: 44,
+                        iconSize: 22,
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(width: 12),
                       Text(
-                        '¥${suggestedMonthlySaving.round()} / 月',
-                        style: const TextStyle(
-                          color: Color(0xFF1F1F2E),
-                          fontSize: 22,
+                        'AI 规划建议',
+                        style: TextStyle(
+                          color: AppColors.title,
+                          fontSize: 18,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
                     ],
                   ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MoneyMiniCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final double amount;
-  final Color color;
-
-  const _MoneyMiniCard({
-    required this.icon,
-    required this.label,
-    required this.amount,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        height: 124,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.09),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: color.withOpacity(0.16),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              icon,
-              color: color,
-              size: 25,
-            ),
-            const Spacer(),
-            Text(
-              label,
-              style: const TextStyle(
-                color: Color(0xFF77778A),
-                fontSize: 12.5,
-                fontWeight: FontWeight.w700,
+                  const SizedBox(height: 16),
+                  _PlanBullet(
+                    title: '短期建议',
+                    text: '优先建立 3–6 个月家庭应急储备，并控制高波动育儿支出。',
+                  ),
+                  _PlanBullet(
+                    title: '中期建议',
+                    text: '按月定额储备教育金，优先覆盖小学到中学阶段教育支出。',
+                  ),
+                  _PlanBullet(
+                    title: '长期建议',
+                    text: '逐步完善家庭基础保障，避免未来大额教育支出冲击现金流。',
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              '¥${amount.round()}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: color,
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-              ),
+            const SizedBox(height: 24),
+            AppPrimaryButton(
+              text: '进入亲子财商陪伴',
+              icon: Icons.family_restroom_rounded,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ParentChildPage(
+                      info: info,
+                      financeTaskService: financeTaskService,
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -482,341 +181,220 @@ class _MoneyMiniCard extends StatelessWidget {
   }
 }
 
-class _TimelineCard extends StatelessWidget {
-  final String step;
-  final String period;
+class _EducationStage {
   final String title;
-  final String content;
-  final Color color;
-  final IconData icon;
-  final bool isFirst;
-  final bool isLast;
+  final String ageRange;
+  final String description;
+  final int amount;
+  final int yearsLater;
+  final bool active;
 
-  const _TimelineCard({
-    required this.step,
-    required this.period,
+  const _EducationStage({
     required this.title,
-    required this.content,
-    required this.color,
-    required this.icon,
-    this.isFirst = false,
-    this.isLast = false,
+    required this.ageRange,
+    required this.description,
+    required this.amount,
+    required this.yearsLater,
+    required this.active,
+  });
+}
+
+class _StageCard extends StatelessWidget {
+  final _EducationStage stage;
+
+  const _StageCard({
+    required this.stage,
   });
 
   @override
   Widget build(BuildContext context) {
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return AppCard(
+      color: stage.active ? AppColors.primaryLight : Colors.white,
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(18),
+      border: Border.all(
+        color: stage.active ? AppColors.primary : AppColors.border,
+      ),
+      child: Column(
         children: [
-          SizedBox(
-            width: 46,
-            child: Column(
-              children: [
-                Expanded(
-                  child: Container(
-                    width: 3,
-                    color: isFirst ? Colors.transparent : color.withOpacity(0.22),
-                  ),
-                ),
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: color.withOpacity(0.28),
-                        blurRadius: 14,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Text(
-                      step,
+          Row(
+            children: [
+              Expanded(
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  children: [
+                    Text(
+                      stage.title,
                       style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
+                        color: AppColors.title,
+                        fontSize: 18,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                  ),
+                    if (stage.active)
+                      const AppPill(
+                        text: '当前阶段',
+                        color: Colors.white,
+                        background: AppColors.primary,
+                      ),
+                  ],
                 ),
-                Expanded(
-                  child: Container(
-                    width: 3,
-                    color: isLast ? Colors.transparent : color.withOpacity(0.22),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 14),
-              padding: const EdgeInsets.all(19),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(26),
-                border: Border.all(
-                  color: const Color(0xFFDCE8F7),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withOpacity(0.08),
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
               ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    child: Icon(
-                      icon,
-                      color: color,
-                      size: 23,
+                  Text(
+                    '¥${stage.amount}',
+                    style: const TextStyle(
+                      color: AppColors.title,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
-                  const SizedBox(width: 13),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          period,
-                          style: TextStyle(
-                            color: color,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 13,
-                          ),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            color: Color(0xFF1F1F2E),
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          content,
-                          style: const TextStyle(
-                            height: 1.55,
-                            color: Color(0xFF555568),
-                            fontSize: 14.5,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
+                  const SizedBox(height: 3),
+                  Text(
+                    stage.yearsLater == 0 ? '当前' : '${stage.yearsLater} 年后',
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
               ),
-            ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ActionListCard extends StatelessWidget {
-  final List<String> items;
-
-  const _ActionListCard({
-    required this.items,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(
-          color: const Color(0xFFDCE8F7),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF004B8D).withOpacity(0.07),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
+          const SizedBox(height: 8),
+          Row(
             children: [
-              Icon(
-                Icons.checklist_rounded,
-                color: Color(0xFF004B8D),
-              ),
-              SizedBox(width: 10),
-              Text(
-                '优先行动清单',
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Color(0xFF1F1F2E),
-                  fontWeight: FontWeight.w900,
+              Expanded(
+                child: Text(
+                  '${stage.ageRange} · ${stage.description}',
+                  style: const TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 15),
-          ...items.asMap().entries.map(
-                (entry) => _ActionItem(
-                  index: entry.key + 1,
-                  text: entry.value,
-                ),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(99),
+            child: LinearProgressIndicator(
+              value: stage.active ? 0.65 : 0.18,
+              minHeight: 7,
+              backgroundColor: const Color(0xFFF7D8D8),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                AppColors.primary,
               ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '建议月储蓄：¥${(stage.amount / ((stage.yearsLater + 1) * 12)).round()}',
+              style: const TextStyle(
+                color: AppColors.muted,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _ActionItem extends StatelessWidget {
-  final int index;
+class _SummaryCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String value;
+
+  const _SummaryCard({
+    required this.icon,
+    required this.title,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppIconBox(icon: icon),
+          const SizedBox(height: 14),
+          Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.muted,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.primary,
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlanBullet extends StatelessWidget {
+  final String title;
   final String text;
 
-  const _ActionItem({
-    required this.index,
+  const _PlanBullet({
+    required this.title,
     required this.text,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 11),
-      padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF5F8FF),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 26,
-            height: 26,
-            decoration: const BoxDecoration(
-              color: Color(0xFF004B8D),
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Text(
-                '$index',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                height: 1.5,
-                color: Color(0xFF44445A),
-                fontSize: 14.5,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ModelNoteCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1F1F2E),
-        borderRadius: BorderRadius.circular(26),
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 13),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Icon(
-            Icons.info_rounded,
-            color: Colors.white,
-            size: 24,
+            Icons.check_circle_rounded,
+            color: AppColors.primary,
+            size: 20,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              '当前原型使用线性回归模型完成综合评分，并通过规则引擎生成规划建议；不连接真实账户，不进行真实金融交易。',
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.88),
-                height: 1.55,
-                fontSize: 13.5,
-                fontWeight: FontWeight.w600,
+            child: RichText(
+              text: TextSpan(
+                style: const TextStyle(
+                  color: AppColors.text,
+                  height: 1.55,
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w600,
+                ),
+                children: [
+                  TextSpan(
+                    text: '$title：',
+                    style: const TextStyle(
+                      color: AppColors.title,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  TextSpan(text: text),
+                ],
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  final String title;
-  final String subtitle;
-
-  const _SectionTitle({
-    required this.title,
-    required this.subtitle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 2),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w900,
-              color: Color(0xFF1F1F2E),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              fontSize: 13,
-              height: 1.45,
-              color: Color(0xFF77778A),
-              fontWeight: FontWeight.w500,
             ),
           ),
         ],
